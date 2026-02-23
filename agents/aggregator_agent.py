@@ -18,3 +18,5 @@ class AggregatorAgent:
             product["final_score"] = round(final, 2)
             logger.info("Aggregator: '%s' → final_score=%.2f", product.get("Product", "?"), final)
         return sorted(products, key=lambda p: p["final_score"], reverse=True)
+
+
