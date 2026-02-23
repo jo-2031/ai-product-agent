@@ -6,3 +6,4 @@ langchain-core
 streamlit
 python-dotenv
 chromadb
+
