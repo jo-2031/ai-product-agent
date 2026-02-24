@@ -5,129 +5,240 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from dotenv import load_dotenv
 load_dotenv()
 import streamlit as st
-from agents.product_search_agent import ProductCollectionAgent
-from agents.orchestrator_agent import ProductOrchestratorAgent
-from workflow.langgraph_workflow import create_workflow
+from workflow.master_workflow import MasterOrchestrator
+from langchain_core.messages import HumanMessage
+from models.product_schema import Product
 from utils.logging import logger
-import json
 
 CSV_PATH = "/Users/jothikaravichandran/Documents/Self_Projects/personal_project/ai_geeks_product_agent/ai-product-agent/source_product_input/merged_product_data.csv"
 
 st.set_page_config(page_title="AI Product Agent", layout="wide", initial_sidebar_state="expanded")
 
+# Custom CSS for better product cards
+st.markdown("""
+<style>
+    /* Product card styling */
+    .stImage {
+        border-radius: 8px;
+        margin-bottom: 10px;
+    }
+    
+    /* Better spacing */
+    [data-testid="column"] {
+        padding: 10px;
+    }
+    
+    /* Card container */
+    [data-testid="stVerticalBlock"] > [style*="flex-direction: column;"] {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+</style>
+""", unsafe_allow_html=True)
+
 @st.cache_resource
-def load_agent(_reload_key="default"):
-    """Cache with reload key to force refresh"""
-    logger.info("Loading RAG Agent...")
-    rag_agent = ProductCollectionAgent("./chroma_db") 
-    rag_agent.load_and_process_data(CSV_PATH)
-    orchestrator = ProductOrchestratorAgent(rag_agent)
-    workflow = create_workflow(orchestrator)
-    logger.info("Agent loaded!")
-    return workflow
+def load_workflow(_reload_key="default", _force_rebuild=False):
+    """Cache workflow with reload key to force refresh"""
+    import shutil
+    from pathlib import Path
+    
+    logger.info("Loading Master Orchestrator Workflow...")
+    
+    # Only delete ChromaDB if force_rebuild is True (from reload button)
+    if _force_rebuild:
+        chroma_db_path = Path(__file__).parent / "agents" / "product_collection_rag_agent" / "chroma_db"
+        if chroma_db_path.exists():
+            logger.info(f"🗑️ Deleting existing ChromaDB at: {chroma_db_path}")
+            shutil.rmtree(chroma_db_path)
+            logger.info("✅ ChromaDB deleted successfully")
+    
+    orchestrator = MasterOrchestrator()
+    
+    # Load product data into search agent (will use existing ChromaDB or create new if deleted)
+    logger.info(f"📊 Loading product data from: {CSV_PATH}")
+    orchestrator.search_agent.load_and_process_data(CSV_PATH)
+    
+    logger.info("✅ Workflow loaded!")
+    return orchestrator
 
 def main():
-    st.title("AI Product Assistant")
+    st.title("🛍️ AI Product Assistant")
+    st.markdown("Multi-Agent Conversational Product Recommendation System")
     st.markdown("---")
     
-    # Workflow Status Display (Always Visible)
-    workflow_status = st.sidebar.empty()
-    
+    # Sidebar
     with st.sidebar:
-        st.header("Agent Control")
+        st.header("🤖 Agent Control")
         
-        # Reload with workflow feedback
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            if st.button("Reload Agent", type="secondary", use_container_width=True):
-                with workflow_status.container():
-                    workflow_status.info("Reloading agent workflow...")
-                    
-                    # Show workflow steps
-                    workflow_status.status("Step 1: Clearing cache...")
-                    st.cache_resource.clear()
-                    
-                    workflow_status.status("Step 2: Loading new agent...")
-                    try:
-                        new_workflow = load_agent(f"reload_{st.session_state.get('reload_count', 0)}")
-                        workflow_status.success("Step 3: Workflow ready!")
-                        st.session_state.reload_count = st.session_state.get('reload_count', 0) + 1
-                    except Exception as e:
-                        workflow_status.error(f"Reload failed: {e}")
-                    
-                    st.rerun()
+        # Reload button
+        if st.button("🔄 Reload Workflow", type="secondary", use_container_width=True):
+            st.cache_resource.clear()
+            st.session_state.reload_count = st.session_state.get('reload_count', 0) + 1
+            # Force rebuild ChromaDB on next load
+            st.session_state.force_rebuild = True
+            st.success("Workflow will reload with fresh data!")
+            st.rerun()
         
-        show_flow = st.checkbox("Show Agent Flow", value=True)
-        st.markdown(f"Status: Connected | Reloads: {st.session_state.get('reload_count', 0)}")
+        st.markdown("---")
+        st.markdown("### 🎯 6-Stage Workflow")
+        stages = [
+            "1️⃣ Greeting",
+            "2️⃣ Product Search (Top 3)",
+            "3️⃣ Comparison (Multi-Agent)",
+            "4️⃣ Recommendation",
+            "5️⃣ Memory Save",
+            "6️⃣ Continue/Close"
+        ]
+        for stage in stages:
+            st.markdown(f"- {stage}")
+        
+        st.markdown("---")
+        show_workflow = st.checkbox("Show Workflow Steps", value=True)
+        show_debug = st.checkbox("Debug Mode (Show Image URLs)", value=False)
+        st.markdown("**Status:** 🟢 Connected")
+        st.markdown(f"**Reloads:** {st.session_state.get('reload_count', 0)}")
     
-    # Initialize session state (NEVER CLEAR ON RELOAD)
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+    # Initialize session state
+    if "chat_messages" not in st.session_state:
+        st.session_state.chat_messages = []
+    if "workflow_state" not in st.session_state:
+        st.session_state.workflow_state = {
+            "conversation_stage": "greeting",
+            "current_products": [],
+            "saved_products": []
+        }
     
-    # Chat display
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+    # Display chat history
+    for msg in st.session_state.chat_messages:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
             
-            if "agent_steps" in message and show_flow:
-                with st.expander("Agent Execution Flow", expanded=False):
-                    for step in message["agent_steps"]:
-                        col1, col2 = st.columns([1, 3])
-                        with col1:
-                            st.markdown(f"**{step.get('agent', 'Unknown')}**")
-                        with col2:
-                            st.markdown(f"*{step.get('action', '')}*")
-                            tools = step.get("tools", [])
-                            if tools:
-                                for tool in tools:
-                                    st.success(f"Tool: {tool}")
+            # Show product images if available
+            if msg["role"] == "assistant" and "products" in msg and msg["products"]:
+                products = msg["products"]
+                cols = st.columns(3)
+                for idx, product_dict in enumerate(products):
+                    with cols[idx % 3]:
+                        img_url = product_dict.get('Product Image URL', '').strip()
+                        if img_url and img_url not in ['N/A', '', 'Not specified']:
+                            try:
+                                st.image(img_url, caption=f"Product {idx+1}", use_container_width=True)
+                            except:
+                                st.caption(f"📦 Product {idx+1}")
             
-            if "route" in message:
-                st.caption(f"Route: {message['route'].upper()} | Agent: {message.get('agent_name', 'Orchestrator')}")
+            # Show workflow steps
+            if "workflow_info" in msg and show_workflow and msg["role"] == "assistant":
+                with st.expander("🔄 Workflow Execution", expanded=False):
+                    workflow_info = msg["workflow_info"]
+                    
+                    # Show stage
+                    st.info(f"**Current Stage:** {workflow_info.get('stage', 'N/A')}")
+                    
+                    # Show user query
+                    if "user_query" in workflow_info and workflow_info['user_query'] != 'N/A':
+                        st.success(f"**Query:** {workflow_info['user_query']}")
     
-    prompt = st.chat_input("Ask about products, prices, discounts...")
+    # Chat input
+    prompt = st.chat_input("💬 Say hi or ask: 'Show me laptops under 80000'")
     
     if prompt:
-        st.session_state.messages.append({"role": "user", "content": prompt})
+        # Add user message
+        st.session_state.chat_messages.append({"role": "user", "content": prompt})
+        
         with st.chat_message("user"):
             st.markdown(prompt)
         
+        # Process with workflow
         with st.chat_message("assistant"):
-            message_placeholder = st.empty()
-            
-            with st.spinner("Agent thinking..."):
+            with st.spinner("Thinking..."):
                 try:
-                    workflow = load_agent()
+                    # Get force_rebuild flag and reset it
+                    force_rebuild = st.session_state.get('force_rebuild', False)
+                    if force_rebuild:
+                        st.session_state.force_rebuild = False
                     
-                    result = workflow.invoke({
-                        "messages": st.session_state.messages[-10:],
-                        "query": prompt
+                    workflow = load_workflow(_force_rebuild=force_rebuild)
+                    
+                    # Build messages for workflow
+                    workflow_messages = [HumanMessage(content=prompt)]
+                    
+                    # Invoke workflow
+                    config = {"configurable": {"thread_id": "streamlit_session"}}
+                    result = workflow.graph.invoke(
+                        {
+                            "messages": workflow_messages,
+                            **st.session_state.workflow_state
+                        },
+                        config
+                    )
+                    
+                    # Extract response
+                    response_message = result["messages"][-1]
+                    response_text = response_message.content
+                    
+                    # Update workflow state
+                    st.session_state.workflow_state.update({
+                        "conversation_stage": result.get("stage", "greeting"),
+                        "current_products": result.get("products", []),
+                        "user_query": result.get("user_query", prompt)
                     })
                     
-                    final_answer = result.get('final_answer', result.get('route_result', {}).get('result', 'No response'))
-                    route = result.get('route_result', {}).get('route', 'general')
+                    # Determine which stage
+                    stage = result.get("stage", "greeting")
                     
-                    agent_steps = [
-                        {"agent": "OrchestratorAgent", "tools": ["route_classifier"], "action": f"Routed to {route}"},
-                        {"agent": "ProductCollectionAgent" if route == "rag" else "GeneralAgent", 
-                         "tools": ["retrieve_product_context"] if route == "rag" else [], 
-                         "action": "Retrieved products" if route == "rag" else "Direct response"}
-                    ]
+                    stage_map = {
+                        "greeting": "1️⃣ Greeting Stage",
+                        "search": "2️⃣ Product Search (RAG Agent)",
+                        "awaiting_compare": "2️⃣ Product Search - Awaiting Compare",
+                        "compare": "3️⃣ Comparison (Multi-Agent)",
+                        "awaiting_recommend": "3️⃣ Comparison - Awaiting Recommendation",
+                        "recommend": "4️⃣ Recommendation Engine",
+                        "memory": "5️⃣ Memory Save",
+                        "close": "6️⃣ Continue/Close Decision",
+                        "exit": "👋 Goodbye"
+                    }
                     
-                    message_placeholder.markdown(final_answer)
+                    stage_display = stage_map.get(stage, f"Stage: {stage}")
                     
-                    st.session_state.messages.append({
+                    workflow_info = {
+                        "stage": stage_display,
+                        "user_query": result.get("user_query", "N/A")
+                    }
+                    
+                    # Display response
+                    st.markdown(response_text)
+                    
+                    # Display product images
+                    products = result.get("products", [])
+                    if products:
+                        cols = st.columns(3)
+                        for idx, product_dict in enumerate(products):
+                            with cols[idx % 3]:
+                                img_url = product_dict.get('Product Image URL', '').strip()
+                                if img_url and img_url not in ['N/A', '', 'Not specified']:
+                                    try:
+                                        st.image(img_url, caption=f"Product {idx+1}", use_container_width=True)
+                                    except:
+                                        st.caption(f"📦 Product {idx+1}")
+                    
+                    # Save to chat history
+                    st.session_state.chat_messages.append({
                         "role": "assistant",
-                        "content": final_answer,
-                        "route": route,
-                        "agent_name": "Orchestrator -> " + ("RAG Agent" if route == "rag" else "General"),
-                        "agent_steps": agent_steps
+                        "content": response_text,
+                        "workflow_info": workflow_info,
+                        "products": products
                     })
                     
                 except Exception as e:
-                    error_msg = f"Error: {str(e)}"
-                    message_placeholder.error(error_msg)
-                    st.session_state.messages.append({"role": "assistant", "content": error_msg})
+                    error_msg = f"❌ Error: {str(e)}"
+                    st.error(error_msg)
+                    logger.error(f"Workflow error: {e}", exc_info=True)
+                    st.session_state.chat_messages.append({
+                        "role": "assistant",
+                        "content": error_msg
+                    })
     
 
 
