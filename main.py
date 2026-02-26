@@ -73,7 +73,7 @@ def main():
         st.header("🤖 Agent Control")
         
         # Reload button
-        if st.button("🔄 Reload Workflow", type="secondary", use_container_width=True):
+        if st.button("🔄 Reload Workflow", type="secondary"):
             st.cache_resource.clear()
             st.session_state.reload_count = st.session_state.get('reload_count', 0) + 1
             # Force rebuild ChromaDB on next load
@@ -124,7 +124,7 @@ def main():
                         img_url = product_dict.get('Product Image URL', '').strip()
                         if img_url and img_url not in ['N/A', '', 'Not specified']:
                             try:
-                                st.image(img_url, caption=f"Product {idx+1}", use_container_width=True)
+                                st.image(img_url, caption=f"Product {idx+1}", width="stretch")
                             except:
                                 st.caption(f"📦 Product {idx+1}")
             
@@ -219,7 +219,7 @@ def main():
                                 img_url = product_dict.get('Product Image URL', '').strip()
                                 if img_url and img_url not in ['N/A', '', 'Not specified']:
                                     try:
-                                        st.image(img_url, caption=f"Product {idx+1}", use_container_width=True)
+                                        st.image(img_url, caption=f"Product {idx+1}", width="stretch")
                                     except:
                                         st.caption(f"📦 Product {idx+1}")
                     

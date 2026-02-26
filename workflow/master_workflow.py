@@ -1,6 +1,6 @@
 """
 Master Orchestrator - Controls complete conversation flow
-Greeting → Search → Compare → Recommend → Memory → Close
+Greeting → Search (awaiting_compare) → Compare (awaiting_recommend) → Recommend (awaiting_memory) → Memory (close) → Close
 """
 from typing import TypedDict, Literal, Annotated, List
 from langgraph.graph import StateGraph, END, START
@@ -152,13 +152,13 @@ Output ONLY ONE WORD: greeting, product_search, compare, recommend, memory, clos
         """Send greeting message"""
         logger.info("Greeting stage")
         
-        greeting_text = """Hi 👋 How can I help you today?
+        greeting_text = """Hi 👋 How can I help you today? \n
 
-You can say things like:
-• "I wanted to buy a laptop under 70000"
-• "Show me the best watches"
-• "Compare the best earbuds"
-• "I need a phone with good battery"
+You can say things like: \n 
+• "I wanted to buy a laptop under 70000" \n 
+• "Show me the best watches" \n 
+• "Compare the best earbuds" \n
+• "I need a phone with good battery" 
 """
         
         return {
@@ -176,6 +176,22 @@ You can say things like:
         # Optimized single retrieval call
         products_data = self.search_agent.get_products_data(user_query)
         logger.info(f"Retrieved {len(products_data)} products")
+        
+        # Check if no products found
+        if not products_data or len(products_data) == 0:
+            no_products_response = """Sorry, this product is currently not available. \n
+
+                    Please try: \n
+                    • Searching with different keywords \n
+                    • Using broader search terms  \n
+                    • Exploring another product category"""
+            
+            return {
+                "messages": [AIMessage(content=no_products_response)],
+                "stage": "greeting",
+                "products": [],
+                "products_text": no_products_response
+            }
         
         # Build product info for LLM
         products_info_text = ""
@@ -270,18 +286,20 @@ Say "recommend" or "yes" to see which product I suggest!"""
             products_text
         )
         
-        # Add prompt to ask about seeing other products
+        # Add prompt to ask about saving preferences
         final_response = f"""{recommendation}
 
 ---
 
-🛍️ **Would you like to see other products?**
+💾 **Would you like me to remember your preferences?**
 
-Say "yes" to search for more products, or "no" to close."""
+This will help me give better recommendations next time!
+
+Say "yes" to save, or "no" to skip."""
         
         return {
             "messages": [AIMessage(content=final_response)],
-            "stage": "close"
+            "stage": "awaiting_memory"
         }
     
     # ============ STAGE 5: MEMORY ============
@@ -289,14 +307,22 @@ Say "yes" to search for more products, or "no" to close."""
         """Save user preferences"""
         logger.info("Memory stage: Saving preferences...")
         
-        memory_prompt = """💾 **Would you like me to remember your preferences?**
+        # Here you can implement actual preference saving logic
+        # For now, just acknowledge and move to close
+        memory_response = """✅ **Preferences saved!**
 
-This will help me give better recommendations next time!
+I'll remember your choices for next time.
 
-(Say "yes" to save, or "no" to skip)"""
+---
+
+🛍️ **Would you like to explore another product?**
+
+Say:
+• "Yes" - to search for more products
+• "No" / "Exit" / "Bye" - to close"""
         
         return {
-            "messages": [AIMessage(content=memory_prompt)],
+            "messages": [AIMessage(content=memory_response)],
             "stage": "close"
         }
     
