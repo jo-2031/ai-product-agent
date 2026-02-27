@@ -24,7 +24,7 @@ class ValueSentimentAgent:
         Returns:
             Sentiment analysis in table format
         """
-        system_prompt = """You are a customer sentiment analyst.
+        system_prompt =  """You are a customer sentiment analyst.
 
 Analyze customer sentiment and create a CLEAR TABLE.
 
@@ -35,14 +35,16 @@ Show:
 4. Customer Preference (High/Medium/Low)
 5. Market Traction (Strong/Good/Weak)
 6. Trust Score (High/Medium/Low)
+7. Key Review Themes  ← e.g., battery, screen, comfort, fit, durability
 
 Format as a markdown table:
-| Product | Rating | Bought Count | Customer Preference | Market Traction | Trust Score |
-|---------|--------|--------------|---------------------|-----------------|-------------|
+| Product | Rating | Bought Count | Customer Preference | Market Traction | Trust Score | Key Review Themes |
+|---------|--------|--------------|---------------------|-----------------|-------------|-------------------|
 
-After table, add 2-3 lines about customer trends.
+After table, add 2–3 lines about customer trends and common complaints/praise.
 
 Do NOT recommend. Just analyze."""
+
 
         messages = [
             SystemMessage(content=system_prompt),

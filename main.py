@@ -81,24 +81,11 @@ def main():
             st.success("Workflow will reload with fresh data!")
             st.rerun()
         
-        st.markdown("---")
-        st.markdown("### 🎯 6-Stage Workflow")
-        stages = [
-            "1️⃣ Greeting",
-            "2️⃣ Product Search (Top 3)",
-            "3️⃣ Comparison (Multi-Agent)",
-            "4️⃣ Recommendation",
-            "5️⃣ Memory Save",
-            "6️⃣ Continue/Close"
-        ]
-        for stage in stages:
-            st.markdown(f"- {stage}")
+    
         
         st.markdown("---")
         show_workflow = st.checkbox("Show Workflow Steps", value=True)
-        show_debug = st.checkbox("Debug Mode (Show Image URLs)", value=False)
         st.markdown("**Status:** 🟢 Connected")
-        st.markdown(f"**Reloads:** {st.session_state.get('reload_count', 0)}")
     
     # Initialize session state
     if "chat_messages" not in st.session_state:

@@ -27,44 +27,49 @@ class RecommendAgent:
         Returns:
             Final recommendation with reasoning
         """
-        system_prompt = """You are a senior product decision expert.
+        system_prompt = system_prompt = """You are a senior product decision expert.
 
-You will receive 3 analyses. Calculate a score for EACH product.
+You will receive:
+- Full product data
+- Value analysis (price, discount, rating, value‑score, description)
+- Brand analysis (brand reputation, trust, market position)
+- Sentiment analysis (rating, bought count, trust, trends)
 
-**SCORING SYSTEM:**
-- Price Value (0-40 points): Based on discount, price vs MRP, value for money
-- Customer Rating (0-30 points): Based on rating and bought count
-- Brand Reputation (0-20 points): Based on brand trust and reputation
-- Overall Value (0-10 points): Additional factors
+Your job:
 
-**Total: 100 points**
+1. **Score each product on a 100‑point scale:**
 
-**OUTPUT FORMAT:**
+   - Price Value (0–40 points): based on discount, price vs MRP, value for money  
+   - Customer Rating (0–30 points): based on rating and bought count  
+   - Brand Reputation (0–20 points): based on brand trust and reputation  
+   - Overall Value (0–10 points): based on extra factors (e.g., features, trends, use‑case fit)
 
-1. First, show SCORING TABLE:
+2. **First, show a SCORING TABLE:**
 
-| Product | Price Value (40) | Rating (30) | Brand (20) | Value (10) | **TOTAL** |
-|---------|------------------|-------------|------------|------------|-----------|
-| Product 1 | XX | XX | XX | XX | **XX** |
-| Product 2 | XX | XX | XX | XX | **XX** |
-| Product 3 | XX | XX | XX | XX | **XX** |
+   | Product | Price Value (40) | Rating (30) | Brand (20) | Value (10) | **TOTAL** |
+   |---------|------------------|-------------|------------|------------|-----------|
+   | Product 1 | XX | XX | XX | XX | **XX** |
+   | Product 2 | XX | XX | XX | XX | **XX** |
+   | Product 3 | XX | XX | XX | XX | **XX** |
 
-2. Then show winner:
+3. **Then show the winner:**
 
-🎯 **RECOMMENDED: [Product Name]**
+   🎯 **RECOMMENDED: [Product Name]**
 
-✅ **Why it wins:**
-- [Reason 1]
-- [Reason 2]
-- [Reason 3]
+   ✅ **Why it wins:**
+   - Reason 1
+   - Reason 2
+   - Reason 3
 
-👥 **Ideal for:**
-- [Use case 1]
-- [Use case 2]
+   👥 **Ideal for:**
+   - Use case 1
+   - Use case 2
 
-💰 **Best for:** [Value proposition]
+   💰 **Best for:** [Value proposition]
 
-Make confident decision based on highest score."""
+Make a confident decision based on the highest total score.  
+Do NOT recommend more than one product."""
+
         
         combined_input = f"""**PRODUCT DATA:**
 {products_text}

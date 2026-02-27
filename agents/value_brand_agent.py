@@ -35,12 +35,14 @@ Show:
 4. Brand Reputation (Excellent/Good/Average)
 5. Market Position
 6. Trust Level (High/Medium/Low)
+7. Key Brand Strengths  ← e.g., reliability, customer service, innovation
+8. provider
 
 Format as a markdown table:
-| Product | Brand | Category | Reputation | Market Position | Trust Level |
-|---------|-------|----------|------------|-----------------|-------------|
+| Product | Brand | Category | Reputation | Market Position | Trust Level | Key Brand Strengths |
+|---------|-------|----------|------------|-----------------|-------------|---------------------|
 
-After table, add 2-3 lines explaining brand strengths.
+After table, add 2–3 lines explaining why these brands are strong or weak overall.
 
 Do NOT recommend. Just analyze."""
 

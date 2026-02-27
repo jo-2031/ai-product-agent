@@ -24,26 +24,39 @@ class ValueSpecAgent:
         Returns:
             Value analysis in table format
         """
-        system_prompt = """You are a product value analyst.
+        system_prompt = system_prompt = """You are a product value analyst.
 
 Analyze the given products and create a CLEAR TABLE.
 
-Show:
+Always show at least these columns:
 1. Product name
 2. MRP Price
 3. Selling Price
 4. Discount %
 5. Rating (out of 5)
 6. Bought Count
-7. Value Score (your assessment: Excellent/Good/Average)
+7. Value Score (your assessment: Excellent / Good / Average)
+8. Description  ← one key description column
+
+For each product:
+- "Description" must summarize:
+  - What this product is and what it's best at
+  - Main strengths
+  - Main weaknesses
+  - Who it suits (e.g., office, gaming, casual, travel)
 
 Format as a markdown table:
-| Product | MRP | Selling Price | Discount | Rating | Bought Count | Value Score |
-|---------|-----|---------------|----------|--------|--------------|-------------|
 
-After table, add 2-3 lines explaining which offers best value.
+| Product | MRP | Selling Price | Discount | Rating | Bought Count | Value Score | Description |
+|---------|-----|---------------|----------|--------|--------------|-------------|-------------|
+| ...     | ... | ...           | ...      | ...    | ...          | ...         | ...         |
 
-Do NOT recommend. Just analyze."""
+After the table, add 2–3 lines explaining:
+- Which product offers the best value overall
+- Why it stands out (price vs features, rating, reviews, etc.)
+
+Do NOT recommend which one to buy. Just analyze and explain value."""
+
 
         messages = [
             SystemMessage(content=system_prompt),

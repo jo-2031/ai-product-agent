@@ -78,13 +78,41 @@ class ProductSearchAgent:
             return json.dumps(products, indent=2, ensure_ascii=False)    
         return retrieve_product_context
     
+    def _check_relevance(self, query: str, products: List[dict]) -> bool:
+        """Use LLM to check if retrieved products are relevant to the query"""
+        if not products:
+            return False
+        
+        # Extract categories from retrieved products
+        categories = [p.get('Category', '') for p in products if p.get('Category')]
+        product_names = [p.get('Product', '') for p in products[:3] if p.get('Product')]
+        
+        # Create a quick relevance check prompt
+        relevance_prompt = f"""User is searching for: "{query}"
+        Retrieved products are in categories: {', '.join(set(categories))}
+        Product examples: {', '.join(product_names[:3])}
+
+        Are these products relevant to what the user is looking for?
+        Answer only 'yes' or 'no'."""
+
+        try:
+            response = self.model.invoke(relevance_prompt)
+            answer = response.content.strip().lower()
+            is_relevant = 'yes' in answer
+            logger.info(f"Relevance check for '{query}': {is_relevant} (LLM response: {answer})")
+            return is_relevant
+        except Exception as e:
+            logger.error(f"Relevance check failed: {e}")
+            # On error, be conservative and show products
+            return True
+    
     def get_products_data(self, query: str) -> List[dict]:
         """Get product data using optimized similarity search
         
         Returns:
-            List of product dictionaries
+            List of product dictionaries, or empty list if not relevant
         """
-        # Single optimized retrieval call
+        # Retrieve potential products
         retrieved_docs = self.vector_store.similarity_search(query, k=3)
         logger.info(f"Retrieved {len(retrieved_docs)} products")
         
@@ -99,14 +127,20 @@ class ProductSearchAgent:
             
             products.append(product_data)
         
+        # Check if products are relevant to the query
+        if not self._check_relevance(query, products):
+            logger.info(f"Products not relevant to query: {query}")
+            return []
+        
         return products
     
     def product_search_agent(self):
         """Create Product Search Agent"""
         tools = [self._create_retrieval_tool()]
         system_prompt = """You are a shopping assistant. Use the retrieval tool to fetch products.
-Show top 3 products with: Name, Brand, Price, Rating.
-Keep responses clean and simple."""
+            Show top 3 products with: Name, Brand, Price, Rating.
+            Keep responses clean and simple.
+            """
         
         self.agent = create_agent(
             model=self.model,
