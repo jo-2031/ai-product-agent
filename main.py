@@ -7,7 +7,7 @@ load_dotenv()
 import streamlit as st
 from workflow.master_workflow import MasterOrchestrator
 from langchain_core.messages import HumanMessage
-from models.product_schema import Product
+# from models.product_schema import Product
 from utils.logging import logger
 
 CSV_PATH = "/Users/jothikaravichandran/Documents/Self_Projects/personal_project/ai_geeks_product_agent/ai-product-agent/source_product_input/merged_product_data.csv"

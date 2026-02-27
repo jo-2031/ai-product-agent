@@ -12,7 +12,6 @@ from agents.value_spec_agent import ValueSpecAgent
 from agents.value_brand_agent import ValueBrandAgent
 from agents.value_sentiment_agent import ValueSentimentAgent
 from agents.recommend_agent import RecommendAgent
-from models.product_schema import Product
 from utils.logging import logger
 import operator
 

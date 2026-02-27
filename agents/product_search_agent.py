@@ -8,7 +8,6 @@ from langchain.agents import create_agent
 from langchain_core.messages import HumanMessage
 from utils.logging import logger
 from config.llm_config import LLMConfig
-from models.product_schema import Product, ProductList
 from typing import List
 import json
 
